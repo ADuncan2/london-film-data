@@ -31,6 +31,11 @@ def build(combined, days, now):
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     lo, hi = start.timestamp() * 1000, (start + dt.timedelta(days=days)).timestamp() * 1000
 
+    # TMDB genre names, keyed by id. Unmatched films carry a single "Uncategorised" entry at the
+    # source; that becomes an empty list here, so the app can offer only real genres.
+    genre_names = {str(k): g["name"] for k, g in combined.get("genres", {}).items()}
+    genre_names = {k: v for k, v in genre_names.items() if v != "Uncategorised"}
+
     films, showings, performances = {}, [], []
     showing_index = {}                          # source showing id -> position in `showings`
     for movie in combined["movies"].values():
@@ -51,6 +56,7 @@ def build(combined, days, now):
                     "imdb": movie.get("imdbId"),
                     "poster": movie.get("posterPath"),      # prefix with https://image.tmdb.org/t/p/w154
                     "summary": movie.get("overview"),
+                    "genres": [genre_names[str(g)] for g in movie.get("genres", []) if str(g) in genre_names],
                 }
             if p["showingId"] not in showing_index:
                 showing_index[p["showingId"]] = len(showings)
@@ -88,7 +94,7 @@ def build(combined, days, now):
         "days": days,
         "attribution": {
             "screenings": "Screening data from Clusterflick - https://clusterflick.com (CC BY 4.0)",
-            "films": "Film titles, runtimes, posters and summaries from TMDB. Not endorsed or certified by TMDB.",
+            "films": "Film titles, runtimes, genres, posters and summaries from TMDB. Not endorsed or certified by TMDB.",
         },
         "performanceColumns": ["showing", "start", "bookingUrl", "soldOut"],
         "venues": venues,

@@ -22,7 +22,7 @@ Run it locally: `python build.py` (Python 3.9+, no packages needed).
 | `generatedAt`, `sourceGeneratedAt` | when this file / Clusterflick's file was built (UTC) |
 | `from`, `days` | first date covered (Europe/London) and how many days |
 | `venues` | id → `name`, `lat`, `lon`, `chain` (one of the big seven, else null), `group`, `address`, `url` |
-| `films` | id → `title`, `runtime` (minutes, TMDB), `year`, `certificate`, `tmdb`, `imdb`, `poster`, `summary` |
+| `films` | id → `title`, `runtime` (minutes, TMDB), `year`, `certificate`, `tmdb`, `imdb`, `poster`, `summary`, `genres` (TMDB genre names; empty when the film is unmatched) |
 | `showings` | list of a film at a venue: `film`, `venue`, `title` (cinema's own, if different), `runtime` (minutes, the cinema's figure, may include adverts), `url` (cinema's page for the film) |
 | `performances` | rows of `[showing index, start (Unix seconds), bookingUrl, soldOut 0/1]`, sorted by start |
 
@@ -31,4 +31,4 @@ Poster images: `https://image.tmdb.org/t/p/w154` + `poster`.
 ## Credits
 
 Screening data from [Clusterflick](https://clusterflick.com) (CC BY 4.0).
-Film titles, runtimes, posters and summaries come from TMDB via Clusterflick; this project is not endorsed or certified by TMDB.
+Film titles, runtimes, genres, posters and summaries come from TMDB via Clusterflick; this project is not endorsed or certified by TMDB.
