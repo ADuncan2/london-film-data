@@ -1,4 +1,5 @@
-# Builds listings.json from Clusterflick's open data and publishes it with GitHub Pages.
+# Builds listings.json from Clusterflick's licensed per-venue data plus TMDB film details, and
+# publishes it with GitHub Pages. Nothing is committed to the repo.
 name: Build listings
 
 on:
@@ -10,8 +11,11 @@ on:
   push:
     branches: [main]            # rebuild whenever the script changes
 
+# GitHub pauses scheduled workflows in repos with no activity for 60 days. If that happens, press
+# "Enable workflow" on the Actions tab (there is no keep-alive commit any more).
+
 permissions:                    # what this workflow's own token may do
-  contents: write               # commit the keep-alive stamp (see last job)
+  contents: read                # check out the code; nothing is ever pushed
   pages: write                  # publish to GitHub Pages
   id-token: write               # proves to Pages that the deploy really comes from this repo
 
@@ -27,15 +31,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get Clusterflick's venue records
+        run: |
+          git clone --depth 1 https://github.com/clusterflick/scripts .cache/scripts
+          node export_venues.js .cache/scripts/cinemas .cache/venues.json
+
       - name: Build listings.json
-        run: python build.py --out site       # exits non-zero if the data looks wrong, which stops everything below
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}   # TMDB "API Read Access Token", set under Settings -> Secrets
+        run: python build.py --venues .cache/venues.json --screenings .cache/screenings --out site
+        # exits non-zero if the data looks wrong, which stops everything below
+
       - name: Hand the site folder to the deploy job
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
-    needs: build                # only runs if build succeeded, so a bad build leaves yesterday's file live
+    needs: build                # only runs if build succeeded, so a bad build leaves the last file live
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -43,23 +60,3 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-
-  keep-alive:
-    # GitHub switches off scheduled workflows in repos with no commits for 60 days.
-    # Publishing to Pages is not a commit, so once a month this job makes a tiny one.
-    needs: deploy
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Commit a stamp if the last commit is over 30 days old
-        run: |
-          last=$(git log -1 --format=%ct)
-          if [ $(( $(date +%s) - last )) -gt $(( 30 * 86400 )) ]; then
-            date -u +%Y-%m-%dT%H:%M:%SZ > last-run.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add last-run.txt
-            git commit -m "Keep scheduled workflow alive"
-            git push
-          fi
